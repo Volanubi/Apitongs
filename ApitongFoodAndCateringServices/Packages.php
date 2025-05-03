@@ -101,7 +101,7 @@ session_start();
 					';
 					unset($_SESSION["success_message"]);
 				}
-				?>
+				?> 
 
 			<div id="display_item" class="row">
 
