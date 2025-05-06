@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -26,34 +24,40 @@ crossorigin="anonymous">
 			
 <?php 
 
+
+
 include 'config.php';
-
 session_start();
-
-error_reporting(0);
+error_reporting(E_ALL);
 
 if (isset($_SESSION['fullname'])) {
     header("Location: HomePage.php");
+    exit;
 }
 
 if (isset($_POST['submit'])) {
-	$email = $_POST['email'];
-	$password = ($_POST['password']);
+ 
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+    
+    $sql = "SELECT * FROM users WHERE email='$email' AND password='$password'";
+    $result = mysqli_query($link, $sql); 
 
-	$sql = "SELECT * FROM users WHERE email='$email' AND password='$password'";
-	$result = mysqli_query($link, $sql);
-	if ($result->num_rows > 0) {
-		$row = mysqli_fetch_assoc($result);
-		$_SESSION['fullname'] = $row['fullname'];
-		header("Location: HomePage.php");
-	} else {
-		echo "<p style='color:red; top:37%; margin-left:60px; position:absolute;'>Wrong Username or Password!</p>";
-	}
+
+    if ($result && mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        $_SESSION['fullname'] = $row['fullname'];
+		
+    } else {
+        echo "<p style='color:red; top:35%; margin-left:60px; position:absolute;'>Wrong Username or Password!</p>";
+    }
 }
 ?>
-			
+
+
+	
 			<div class="input-group">
-				<input type="email" placeholder="Email" name="email" value="<?php echo $email; ?>" required>
+				<input type="email" placeholder="Email" name="email" value="<?php echo $email; ?>">
 			</div>
 			<div class="input-group">
 				<input type="password" placeholder="Password" name="password" value="<?php echo $_POST['password']; ?>" required>
