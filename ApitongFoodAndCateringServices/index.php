@@ -24,11 +24,9 @@ crossorigin="anonymous">
 			
 <?php 
 
-
-
 include 'config.php';
 session_start();
-error_reporting(E_ALL);
+error_reporting(0);
 
 if (isset($_SESSION['fullname'])) {
     header("Location: HomePage.php");
@@ -57,7 +55,7 @@ if (isset($_POST['submit'])) {
 
 	
 			<div class="input-group">
-				<input type="email" placeholder="Email" name="email" value="<?php echo $email; ?>">
+				<input type="email" placeholder="Email" name="email" value="<?php echo $email; ?>" required>
 			</div>
 			<div class="input-group">
 				<input type="password" placeholder="Password" name="password" value="<?php echo $_POST['password']; ?>" required>

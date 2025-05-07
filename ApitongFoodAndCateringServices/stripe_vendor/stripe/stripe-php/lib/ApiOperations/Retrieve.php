@@ -11,17 +11,20 @@ namespace Stripe\ApiOperations;
 trait Retrieve
 {
     /**
-     * @param array|string $id The ID of the API resource to retrieve,
-     *     or an options array containing an `id` key.
-     * @param array|string|null $opts
+     * @param array|string $id the ID of the API resource to retrieve,
+     *     or an options array containing an `id` key
+     * @param null|array|string $opts
      *
      * @return static
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
      */
     public static function retrieve($id, $opts = null)
     {
         $opts = \Stripe\Util\RequestOptions::parse($opts);
         $instance = new static($id, $opts);
         $instance->refresh();
+
         return $instance;
     }
 }

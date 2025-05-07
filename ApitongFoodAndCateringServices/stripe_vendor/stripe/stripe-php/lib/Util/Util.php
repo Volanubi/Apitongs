@@ -15,209 +15,167 @@ abstract class Util
      * integers starting at 0. Empty arrays are considered to be lists.
      *
      * @param array|mixed $array
-     * @return boolean true if the given object is a list.
+     *
+     * @return bool true if the given object is a list
      */
     public static function isList($array)
     {
-        if (!is_array($array)) {
+        if (!\is_array($array)) {
             return false;
         }
-        if ($array === []) {
+        if ([] === $array) {
             return true;
         }
-        if (array_keys($array) !== range(0, count($array) - 1)) {
+        if (\array_keys($array) !== \range(0, \count($array) - 1)) {
             return false;
         }
-        return true;
-    }
 
-    /**
-     * Recursively converts the PHP Stripe object to an array.
-     *
-     * @param array $values The PHP Stripe object to convert.
-     * @return array
-     */
-    public static function convertStripeObjectToArray($values)
-    {
-        $results = [];
-        foreach ($values as $k => $v) {
-            // FIXME: this is an encapsulation violation
-            if ($k[0] == '_') {
-                continue;
-            }
-            if ($v instanceof StripeObject) {
-                $results[$k] = $v->__toArray(true);
-            } elseif (is_array($v)) {
-                $results[$k] = self::convertStripeObjectToArray($v);
-            } else {
-                $results[$k] = $v;
-            }
-        }
-        return $results;
+        return true;
     }
 
     /**
      * Converts a response from the Stripe API to the corresponding PHP object.
      *
-     * @param array $resp The response from the Stripe API.
-     * @param array $opts
-     * @return StripeObject|array
+     * @param array                $resp    the response from the Stripe API
+     * @param array|RequestOptions $opts
+     * @param 'v1'|'v2'            $apiMode whether the response is from a v1 or v2 API
+     *
+     * @return array|StripeObject
      */
-    public static function convertToStripeObject($resp, $opts)
+    public static function convertToStripeObject($resp, $opts, $apiMode = 'v1')
     {
-        $types = [
-            // data structures
-            \Stripe\Collection::OBJECT_NAME => 'Stripe\\Collection',
-
-            // business objects
-            \Stripe\Account::OBJECT_NAME => 'Stripe\\Account',
-            \Stripe\AccountLink::OBJECT_NAME => 'Stripe\\AccountLink',
-            \Stripe\AlipayAccount::OBJECT_NAME => 'Stripe\\AlipayAccount',
-            \Stripe\ApplePayDomain::OBJECT_NAME => 'Stripe\\ApplePayDomain',
-            \Stripe\ApplicationFee::OBJECT_NAME => 'Stripe\\ApplicationFee',
-            \Stripe\Balance::OBJECT_NAME => 'Stripe\\Balance',
-            \Stripe\BalanceTransaction::OBJECT_NAME => 'Stripe\\BalanceTransaction',
-            \Stripe\BankAccount::OBJECT_NAME => 'Stripe\\BankAccount',
-            \Stripe\BitcoinReceiver::OBJECT_NAME => 'Stripe\\BitcoinReceiver',
-            \Stripe\BitcoinTransaction::OBJECT_NAME => 'Stripe\\BitcoinTransaction',
-            \Stripe\Capability::OBJECT_NAME => 'Stripe\\Capability',
-            \Stripe\Card::OBJECT_NAME => 'Stripe\\Card',
-            \Stripe\Charge::OBJECT_NAME => 'Stripe\\Charge',
-            \Stripe\Checkout\Session::OBJECT_NAME => 'Stripe\\Checkout\\Session',
-            \Stripe\CountrySpec::OBJECT_NAME => 'Stripe\\CountrySpec',
-            \Stripe\Coupon::OBJECT_NAME => 'Stripe\\Coupon',
-            \Stripe\CreditNote::OBJECT_NAME => 'Stripe\\CreditNote',
-            \Stripe\Customer::OBJECT_NAME => 'Stripe\\Customer',
-            \Stripe\Discount::OBJECT_NAME => 'Stripe\\Discount',
-            \Stripe\Dispute::OBJECT_NAME => 'Stripe\\Dispute',
-            \Stripe\EphemeralKey::OBJECT_NAME => 'Stripe\\EphemeralKey',
-            \Stripe\Event::OBJECT_NAME => 'Stripe\\Event',
-            \Stripe\ExchangeRate::OBJECT_NAME => 'Stripe\\ExchangeRate',
-            \Stripe\ApplicationFeeRefund::OBJECT_NAME => 'Stripe\\ApplicationFeeRefund',
-            \Stripe\File::OBJECT_NAME => 'Stripe\\File',
-            \Stripe\File::OBJECT_NAME_ALT => 'Stripe\\File',
-            \Stripe\FileLink::OBJECT_NAME => 'Stripe\\FileLink',
-            \Stripe\Invoice::OBJECT_NAME => 'Stripe\\Invoice',
-            \Stripe\InvoiceItem::OBJECT_NAME => 'Stripe\\InvoiceItem',
-            \Stripe\InvoiceLineItem::OBJECT_NAME => 'Stripe\\InvoiceLineItem',
-            \Stripe\IssuerFraudRecord::OBJECT_NAME => 'Stripe\\IssuerFraudRecord',
-            \Stripe\Issuing\Authorization::OBJECT_NAME => 'Stripe\\Issuing\\Authorization',
-            \Stripe\Issuing\Card::OBJECT_NAME => 'Stripe\\Issuing\\Card',
-            \Stripe\Issuing\CardDetails::OBJECT_NAME => 'Stripe\\Issuing\\CardDetails',
-            \Stripe\Issuing\Cardholder::OBJECT_NAME => 'Stripe\\Issuing\\Cardholder',
-            \Stripe\Issuing\Dispute::OBJECT_NAME => 'Stripe\\Issuing\\Dispute',
-            \Stripe\Issuing\Transaction::OBJECT_NAME => 'Stripe\\Issuing\\Transaction',
-            \Stripe\LoginLink::OBJECT_NAME => 'Stripe\\LoginLink',
-            \Stripe\Order::OBJECT_NAME => 'Stripe\\Order',
-            \Stripe\OrderItem::OBJECT_NAME => 'Stripe\\OrderItem',
-            \Stripe\OrderReturn::OBJECT_NAME => 'Stripe\\OrderReturn',
-            \Stripe\PaymentIntent::OBJECT_NAME => 'Stripe\\PaymentIntent',
-            \Stripe\PaymentMethod::OBJECT_NAME => 'Stripe\\PaymentMethod',
-            \Stripe\Payout::OBJECT_NAME => 'Stripe\\Payout',
-            \Stripe\Person::OBJECT_NAME => 'Stripe\\Person',
-            \Stripe\Plan::OBJECT_NAME => 'Stripe\\Plan',
-            \Stripe\Product::OBJECT_NAME => 'Stripe\\Product',
-            \Stripe\Radar\ValueList::OBJECT_NAME => 'Stripe\\Radar\\ValueList',
-            \Stripe\Radar\ValueListItem::OBJECT_NAME => 'Stripe\\Radar\\ValueListItem',
-            \Stripe\Recipient::OBJECT_NAME => 'Stripe\\Recipient',
-            \Stripe\RecipientTransfer::OBJECT_NAME => 'Stripe\\RecipientTransfer',
-            \Stripe\Refund::OBJECT_NAME => 'Stripe\\Refund',
-            \Stripe\Reporting\ReportRun::OBJECT_NAME => 'Stripe\\Reporting\\ReportRun',
-            \Stripe\Reporting\ReportType::OBJECT_NAME => 'Stripe\\Reporting\\ReportType',
-            \Stripe\Review::OBJECT_NAME => 'Stripe\\Review',
-            \Stripe\SKU::OBJECT_NAME => 'Stripe\\SKU',
-            \Stripe\Sigma\ScheduledQueryRun::OBJECT_NAME => 'Stripe\\Sigma\\ScheduledQueryRun',
-            \Stripe\Source::OBJECT_NAME => 'Stripe\\Source',
-            \Stripe\SourceTransaction::OBJECT_NAME => 'Stripe\\SourceTransaction',
-            \Stripe\Subscription::OBJECT_NAME => 'Stripe\\Subscription',
-            \Stripe\SubscriptionItem::OBJECT_NAME => 'Stripe\\SubscriptionItem',
-            \Stripe\SubscriptionSchedule::OBJECT_NAME => 'Stripe\\SubscriptionSchedule',
-            \Stripe\SubscriptionScheduleRevision::OBJECT_NAME => 'Stripe\\SubscriptionScheduleRevision',
-            \Stripe\TaxId::OBJECT_NAME => 'Stripe\\TaxId',
-            \Stripe\TaxRate::OBJECT_NAME => 'Stripe\\TaxRate',
-            \Stripe\ThreeDSecure::OBJECT_NAME => 'Stripe\\ThreeDSecure',
-            \Stripe\Terminal\ConnectionToken::OBJECT_NAME => 'Stripe\\Terminal\\ConnectionToken',
-            \Stripe\Terminal\Location::OBJECT_NAME => 'Stripe\\Terminal\\Location',
-            \Stripe\Terminal\Reader::OBJECT_NAME => 'Stripe\\Terminal\\Reader',
-            \Stripe\Token::OBJECT_NAME => 'Stripe\\Token',
-            \Stripe\Topup::OBJECT_NAME => 'Stripe\\Topup',
-            \Stripe\Transfer::OBJECT_NAME => 'Stripe\\Transfer',
-            \Stripe\TransferReversal::OBJECT_NAME => 'Stripe\\TransferReversal',
-            \Stripe\UsageRecord::OBJECT_NAME => 'Stripe\\UsageRecord',
-            \Stripe\UsageRecordSummary::OBJECT_NAME => 'Stripe\\UsageRecordSummary',
-            \Stripe\WebhookEndpoint::OBJECT_NAME => 'Stripe\\WebhookEndpoint',
-        ];
+        $types = 'v1' === $apiMode ? ObjectTypes::mapping
+            : ObjectTypes::v2Mapping;
         if (self::isList($resp)) {
             $mapped = [];
             foreach ($resp as $i) {
-                array_push($mapped, self::convertToStripeObject($i, $opts));
+                $mapped[] = self::convertToStripeObject($i, $opts, $apiMode);
             }
+
             return $mapped;
-        } elseif (is_array($resp)) {
-            if (isset($resp['object']) && is_string($resp['object']) && isset($types[$resp['object']])) {
-                $class = $types[$resp['object']];
-            } else {
-                $class = 'Stripe\\StripeObject';
-            }
-            return $class::constructFrom($resp, $opts);
-        } else {
-            return $resp;
         }
+        if (\is_array($resp)) {
+            if (isset($resp['object']) && \is_string($resp['object'])
+                && isset($types[$resp['object']])
+            ) {
+                $class = $types[$resp['object']];
+                if ('v2' === $apiMode && ('v2.core.event' === $resp['object'])) {
+                    $eventTypes = EventTypes::thinEventMapping;
+                    if (\array_key_exists('type', $resp) && \array_key_exists($resp['type'], $eventTypes)) {
+                        $class = $eventTypes[$resp['type']];
+                    } else {
+                        $class = \Stripe\V2\Event::class;
+                    }
+                }
+            } elseif (\array_key_exists('data', $resp) && \array_key_exists('next_page_url', $resp)) {
+                // TODO: this is a horrible hack. The API needs
+                // to return something for `object` here.
+                $class = \Stripe\V2\Collection::class;
+            } else {
+                $class = StripeObject::class;
+            }
+
+            return $class::constructFrom($resp, $opts, $apiMode);
+        }
+
+        return $resp;
     }
 
     /**
-     * @param string|mixed $value A string to UTF8-encode.
+     * @param mixed $json
+     * @param mixed $class
      *
-     * @return string|mixed The UTF8-encoded string, or the object passed in if
-     *    it wasn't a string.
+     * @throws \ReflectionException
      */
-    public static function utf8($value)
+    public static function json_decode_thin_event_object($json, $class)
     {
-        if (self::$isMbstringAvailable === null) {
-            self::$isMbstringAvailable = function_exists('mb_detect_encoding');
-
-            if (!self::$isMbstringAvailable) {
-                trigger_error("It looks like the mbstring extension is not enabled. " .
-                    "UTF-8 strings will not properly be encoded. Ask your system " .
-                    "administrator to enable the mbstring extension, or write to " .
-                    "support@stripe.com if you have any questions.", E_USER_WARNING);
+        $reflection = new \ReflectionClass($class);
+        $instance = $reflection->newInstanceWithoutConstructor();
+        $json = json_decode($json, true);
+        $properties = $reflection->getProperties();
+        foreach ($properties as $key => $property) {
+            if (\array_key_exists($property->getName(), $json)) {
+                if ('related_object' === $property->getName()) {
+                    $related_object = new \Stripe\RelatedObject();
+                    $related_object->id = $json['related_object']['id'];
+                    $related_object->url = $json['related_object']['url'];
+                    $related_object->type = $json['related_object']['type'];
+                    $property->setValue($instance, $related_object);
+                } elseif ('reason' === $property->getName()) {
+                    $reason = new \Stripe\Reason();
+                    $reason->id = $json['reason']['id'];
+                    $reason->idempotency_key = $json['reason']['idempotency_key'];
+                    $property->setValue($instance, $reason);
+                } else {
+                    $property->setAccessible(true);
+                    $property->setValue($instance, $json[$property->getName()]);
+                }
             }
         }
 
-        if (is_string($value) && self::$isMbstringAvailable && mb_detect_encoding($value, "UTF-8", true) != "UTF-8") {
-            return utf8_encode($value);
-        } else {
-            return $value;
+        return $instance;
+    }
+
+    /**
+     * @param mixed|string $value a string to UTF8-encode
+     *
+     * @return mixed|string the UTF8-encoded string, or the object passed in if
+     *    it wasn't a string
+     */
+    public static function utf8($value)
+    {
+        if (null === self::$isMbstringAvailable) {
+            self::$isMbstringAvailable = \function_exists('mb_detect_encoding')
+                && \function_exists('mb_convert_encoding');
+
+            if (!self::$isMbstringAvailable) {
+                \trigger_error(
+                    'It looks like the mbstring extension is not enabled. '
+                    . 'UTF-8 strings will not properly be encoded. Ask your system '
+                    . 'administrator to enable the mbstring extension, or write to '
+                    . 'support@stripe.com if you have any questions.',
+                    \E_USER_WARNING
+                );
+            }
         }
+
+        if (\is_string($value) && self::$isMbstringAvailable
+            && 'UTF-8' !== \mb_detect_encoding($value, 'UTF-8', true)
+        ) {
+            return mb_convert_encoding($value, 'UTF-8', 'ISO-8859-1');
+        }
+
+        return $value;
     }
 
     /**
      * Compares two strings for equality. The time taken is independent of the
      * number of characters that match.
      *
-     * @param string $a one of the strings to compare.
-     * @param string $b the other string to compare.
-     * @return bool true if the strings are equal, false otherwise.
+     * @param string $a one of the strings to compare
+     * @param string $b the other string to compare
+     *
+     * @return bool true if the strings are equal, false otherwise
      */
     public static function secureCompare($a, $b)
     {
-        if (self::$isHashEqualsAvailable === null) {
-            self::$isHashEqualsAvailable = function_exists('hash_equals');
+        if (null === self::$isHashEqualsAvailable) {
+            self::$isHashEqualsAvailable = \function_exists('hash_equals');
         }
 
         if (self::$isHashEqualsAvailable) {
-            return hash_equals($a, $b);
-        } else {
-            if (strlen($a) != strlen($b)) {
-                return false;
-            }
-
-            $result = 0;
-            for ($i = 0; $i < strlen($a); $i++) {
-                $result |= ord($a[$i]) ^ ord($b[$i]);
-            }
-            return ($result == 0);
+            return \hash_equals($a, $b);
         }
+        if (\strlen($a) !== \strlen($b)) {
+            return false;
+        }
+
+        $result = 0;
+        for ($i = 0; $i < \strlen($a); ++$i) {
+            $result |= \ord($a[$i]) ^ \ord($b[$i]);
+        }
+
+        return 0 === $result;
     }
 
     /**
@@ -226,67 +184,83 @@ abstract class Util
      * Also clears out null values.
      *
      * @param mixed $h
+     *
      * @return mixed
      */
     public static function objectsToIds($h)
     {
         if ($h instanceof \Stripe\ApiResource) {
             return $h->id;
-        } elseif (static::isList($h)) {
+        }
+        if (static::isList($h)) {
             $results = [];
             foreach ($h as $v) {
-                array_push($results, static::objectsToIds($v));
+                $results[] = static::objectsToIds($v);
             }
+
             return $results;
-        } elseif (is_array($h)) {
+        }
+        if (\is_array($h)) {
             $results = [];
             foreach ($h as $k => $v) {
-                if (is_null($v)) {
+                if (null === $v) {
                     continue;
                 }
                 $results[$k] = static::objectsToIds($v);
             }
+
             return $results;
-        } else {
-            return $h;
         }
+
+        return $h;
     }
 
     /**
      * @param array $params
+     * @param mixed $apiMode
      *
      * @return string
      */
-    public static function encodeParameters($params)
+    public static function encodeParameters($params, $apiMode = 'v1')
     {
-        $flattenedParams = self::flattenParams($params);
+        $flattenedParams = self::flattenParams($params, null, $apiMode);
         $pieces = [];
         foreach ($flattenedParams as $param) {
             list($k, $v) = $param;
-            array_push($pieces, self::urlEncode($k) . '=' . self::urlEncode($v));
+            $pieces[] = self::urlEncode($k) . '=' . self::urlEncode($v);
         }
-        return implode('&', $pieces);
+
+        return \implode('&', $pieces);
     }
 
     /**
-     * @param array $params
-     * @param string|null $parentKey
+     * @param array       $params
+     * @param null|string $parentKey
+     * @param mixed       $apiMode
      *
      * @return array
      */
-    public static function flattenParams($params, $parentKey = null)
-    {
+    public static function flattenParams(
+        $params,
+        $parentKey = null,
+        $apiMode = 'v1'
+    ) {
         $result = [];
 
         foreach ($params as $key => $value) {
             $calculatedKey = $parentKey ? "{$parentKey}[{$key}]" : $key;
-
             if (self::isList($value)) {
-                $result = array_merge($result, self::flattenParamsList($value, $calculatedKey));
-            } elseif (is_array($value)) {
-                $result = array_merge($result, self::flattenParams($value, $calculatedKey));
+                $result = \array_merge(
+                    $result,
+                    self::flattenParamsList($value, $calculatedKey, $apiMode)
+                );
+            } elseif (\is_array($value)) {
+                $result = \array_merge(
+                    $result,
+                    self::flattenParams($value, $calculatedKey, $apiMode)
+                );
             } else {
-                array_push($result, [$calculatedKey, $value]);
+                $result[] = [$calculatedKey, $value];
             }
         }
 
@@ -294,22 +268,36 @@ abstract class Util
     }
 
     /**
-     * @param array $value
+     * @param array  $value
      * @param string $calculatedKey
+     * @param mixed  $apiMode
      *
      * @return array
      */
-    public static function flattenParamsList($value, $calculatedKey)
-    {
+    public static function flattenParamsList(
+        $value,
+        $calculatedKey,
+        $apiMode = 'v1'
+    ) {
         $result = [];
 
         foreach ($value as $i => $elem) {
             if (self::isList($elem)) {
-                $result = array_merge($result, self::flattenParamsList($elem, $calculatedKey));
-            } elseif (is_array($elem)) {
-                $result = array_merge($result, self::flattenParams($elem, "{$calculatedKey}[{$i}]"));
+                $result = \array_merge(
+                    $result,
+                    self::flattenParamsList($elem, $calculatedKey)
+                );
+            } elseif (\is_array($elem)) {
+                $result = \array_merge(
+                    $result,
+                    self::flattenParams($elem, "{$calculatedKey}[{$i}]")
+                );
             } else {
-                array_push($result, ["{$calculatedKey}[{$i}]", $elem]);
+                if ('v2' === $apiMode) {
+                    $result[] = ["{$calculatedKey}", $elem];
+                } else {
+                    $result[] = ["{$calculatedKey}[{$i}]", $elem];
+                }
             }
         }
 
@@ -317,42 +305,56 @@ abstract class Util
     }
 
     /**
-     * @param string $key A string to URL-encode.
+     * @param string $key a string to URL-encode
      *
-     * @return string The URL-encoded string.
+     * @return string the URL-encoded string
      */
     public static function urlEncode($key)
     {
-        $s = urlencode($key);
+        $s = \urlencode((string) $key);
 
         // Don't use strict form encoding by changing the square bracket control
         // characters back to their literals. This is fine by the server, and
         // makes these parameter strings easier to read.
-        $s = str_replace('%5B', '[', $s);
-        $s = str_replace('%5D', ']', $s);
+        $s = \str_replace('%5B', '[', $s);
 
-        return $s;
+        return \str_replace('%5D', ']', $s);
     }
 
     public static function normalizeId($id)
     {
-        if (is_array($id)) {
+        if (\is_array($id)) {
+            // see https://github.com/stripe/stripe-php/pull/1602
+            if (!isset($id['id'])) {
+                return [null, $id];
+            }
             $params = $id;
             $id = $params['id'];
             unset($params['id']);
         } else {
             $params = [];
         }
+
         return [$id, $params];
     }
 
     /**
-     * Returns UNIX timestamp in milliseconds
+     * Returns UNIX timestamp in milliseconds.
      *
-     * @return integer current time in millis
+     * @return int current time in millis
      */
     public static function currentTimeMillis()
     {
-        return (int) round(microtime(true) * 1000);
+        return (int) \round(\microtime(true) * 1000);
+    }
+
+    public static function getApiMode($path)
+    {
+        $apiMode = 'v1';
+        if ('/v2' === substr($path, 0, 3)) {
+            $apiMode = 'v2';
+        }
+
+        return $apiMode;
     }
 }
